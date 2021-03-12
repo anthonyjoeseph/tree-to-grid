@@ -1,12 +1,14 @@
 {
   "name": "tree-to-grid",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Turns a tree structure into an evenly spaced grid",
   "main": "dist/index.js",
   "repository": "https://github.com/anthonyjoeseph/tree-to-grid",
   "author": "Anthony Gabriele <anthonyjoeseph@gmail.com>",
   "license": "MIT",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "types": "./dist/index.d.ts",
   "dependencies": {
     "fp-ts": "^2.9.5",
