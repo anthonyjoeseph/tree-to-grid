@@ -1,6 +1,6 @@
 {
   "name": "tree-to-grid",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Turns a tree structure into an evenly spaced grid",
   "main": "dist/index.js",
   "repository": "https://github.com/anthonyjoeseph/tree-to-grid",
