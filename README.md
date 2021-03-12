@@ -1,5 +1,13 @@
 # tree-to-grid
 
+## installation
+
+```
+yarn add tree-to-grid
+```
+
+## example
+
 Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlinsley/react-table/tree/master/examples/basic?from-embed) - `makeData` can be found there
 
 ```tsx
