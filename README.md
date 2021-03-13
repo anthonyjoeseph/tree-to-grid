@@ -118,4 +118,6 @@ const App = () => {
 }
 ```
 
+### output
+
 ![table output](table-screenshot.png)
