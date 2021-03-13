@@ -11,11 +11,7 @@ yarn add tree-to-grid
 Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlinsley/react-table/tree/master/examples/basic?from-embed)
 
 ```tsx
-import { identity, pipe } from 'fp-ts/function';
-import * as O from 'fp-ts/Option';
-import * as A from 'fp-ts/Array'
 import React from 'react';
-import makeData from './lib/makeData';
 import { Tree, branchValueGrid, leafValues } from './lib/TreeUtil';
 
 type ValueOf<A> = A[keyof A]
@@ -45,14 +41,14 @@ const toTree = <A,>(col: Column<A>): Tree<Accessor<A>, string> => 'columns' in c
   }
 
 const Table = <A,>({ data, columns }: { data: A[]; columns: Column<A>[] }) => {
-  const accessors = pipe(columns, A.map(toTree), A.chain(leafValues))
+  const accessors = columns.map(toTree).flatMap(leafValues)
   return (
     <table>
       <thead>
         {branchValueGrid(columns.map(toTree)).map(headerGroup => (
           <tr>
             {headerGroup.map(({ value, numLeaves }) => (
-              <th colSpan={numLeaves}>{pipe(value, O.toUndefined)}</th>
+              <th colSpan={numLeaves}>{value}</th>
             ))}
           </tr>
         ))}
@@ -63,7 +59,7 @@ const Table = <A,>({ data, columns }: { data: A[]; columns: Column<A>[] }) => {
       <tbody>
         {data.map(rowData => (
           <tr>
-            {accessors.map(({Cell = identity, accessor}) => (
+            {accessors.map(({Cell = (a) => a, accessor}) => (
               <td>{Cell(rowData[accessor])}</td>
             ))}
           </tr>
