@@ -1,6 +1,9 @@
 import { sum } from 'fp-ts-std/Array';
 import * as A from 'fp-ts/Array';
-import { pipe } from 'fp-ts/function';
+import * as NEA from 'fp-ts/NonEmptyArray'
+import * as Eq from 'fp-ts/Eq'
+import * as Ord from 'fp-ts/Ord'
+import { flow, pipe } from 'fp-ts/function';
 import * as O from 'fp-ts/Option';
 
 export interface Branch<A, B> {
@@ -16,24 +19,19 @@ export interface Leaf<A> {
 
 export type Tree<A, B> = Branch<A, B> | Leaf<A>
 
-export const numLeaves = <A, B>(tree: Tree<A, B>): number => tree.type === 'Branch'
+const numLeaves = <A, B>(tree: Tree<A, B>): number => tree.type === 'Branch'
   ? pipe(tree.children, A.map(numLeaves), sum)
   : 1
 
-const branchValueGridInternal = <A, B>(
-  branches: Array<Tree<A, B> | { type: 'Empty' }>
-): Array<Array<{ numLeaves: number; value: O.Option<B> }>> => pipe(
-  branches,
-  A.chain((col): Array<Tree<A, B> | { type: 'Empty' }> => col.type === 'Branch' ? col.children : [{ type: "Empty" }]),
-  O.fromPredicate(A.some(column => column.type === 'Branch')),
-  O.fold(() => A.empty, branchValueGridInternal),
-  A.cons(pipe(
-    branches,
-    A.map((node) => ({
-      value: pipe(node, O.fromPredicate((c): c is Branch<A, B> => c.type === 'Branch'), O.map(c => c.value)),
-      numLeaves: node.type !== 'Empty' ? numLeaves(node) : 1
-    }))
-  ))
+const max: (ns: number[]) => number = flow(NEA.fromArray, O.fold(() => 0, NEA.max(Ord.ordNumber)))
+
+const level = <A, B>(tree: Tree<A, B>): number => tree.type === 'Branch'
+  ? pipe(tree.children, A.map(level), max) + 1
+  : 1
+
+const sameLevelEq = <A, B>() => pipe(
+  Eq.eqNumber,
+  Eq.contramap<number, Tree<A, B>>(level)
 )
 
 /**
@@ -45,7 +43,7 @@ const branchValueGridInternal = <A, B>(
  * 
  * @example
  * 
- * const tree: Tree<string, number>[] = [
+ * const branches: Tree<number, string>[] = [
  *   {
  *     type: 'Branch',
  *     value: 'A1',
@@ -63,21 +61,61 @@ const branchValueGridInternal = <A, B>(
  *   {
  *     type: 'Branch',
  *     value: 'A2',
- *     branches: [
+ *     children: [
  *       { type: 'Leaf', value: 3 },
  *       { type: 'Leaf', value: 4 }
  *     ]
  *   }
  * ]
  * 
- * const grid: { numLeaves: number; value: O.Option<string> }[][] = [
- *   [ { numLeaves: 2, value: O.some('A1') },  { numLeaves: 2, value: O.some('A2') } ],
- *   [ { numLeaves: 2, value: O.some('B') }, { numLeaves: 2, value: O.none } ],
+ * const grid: { numLeaves: number; value: string | undefined }[][] = [
+ *   [ { numLeaves: 2, value: 'A1' },  { numLeaves: 2, value: undefined } ],
+ *   [ { numLeaves: 2, value: 'B' }, { numLeaves: 2, value: 'A2' } ],
  * ]
  * 
  * assert.deepStrictEqual(branchValueGrid(branches), grid)
  */
-export const branchValueGrid = <A, B>(branches: Tree<A, B>[]) => branchValueGridInternal(branches)
+export const branchValueGrid = <A, B>(
+  branches: Array<Tree<A, B>>
+): Array<Array<{ numLeaves: number, value: B | undefined }>> => {
+  const maxLevel = pipe(branches, A.map(level), max)
+  const nextLevel = maxLevel - 1
+  const rowOutput: { numLeaves: number, value: B | undefined }[] = pipe(
+    branches,
+    A.chain(b => b.type === 'Leaf' || level(b) < maxLevel
+      ? [{ numLeaves: numLeaves(b), value: undefined }]
+      : pipe(
+        b.children,
+        NEA.group(sameLevelEq<A, B>()),
+        A.map(d => ({
+          numLeaves: pipe(d, NEA.map(numLeaves), sum),
+          value: level(NEA.head(d)) === nextLevel ? b.value : undefined
+        })),
+      )
+    )
+  )
+  const lowerTrees: Tree<A, B>[] = pipe(
+    branches,
+    A.chain(b => b.type === 'Leaf' || level(b) < maxLevel 
+      ? [b]
+      : pipe(
+        b.children,
+        NEA.group(sameLevelEq<A, B>()),
+        A.chain(c => level(NEA.head(c)) === nextLevel
+          ? c
+          : [{
+            type: 'Branch',
+            value: b.value,
+            children: c
+          }]
+        )
+      )
+    )
+  )
+  return lowerTrees.some(t => t.type === 'Branch')
+    ? [rowOutput, ...branchValueGrid(lowerTrees)]
+    : [rowOutput]
+}
 
 /**
  * Turns a Tree into an Array of the values of its leaves

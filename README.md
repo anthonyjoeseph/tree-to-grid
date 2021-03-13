@@ -6,9 +6,9 @@
 yarn add tree-to-grid
 ```
 
-## example
+## example (react)
 
-Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlinsley/react-table/tree/master/examples/basic?from-embed) - `makeData` can be found there
+Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlinsley/react-table/tree/master/examples/basic?from-embed)
 
 ```tsx
 import { identity, pipe } from 'fp-ts/function';
@@ -73,38 +73,53 @@ const Table = <A,>({ data, columns }: { data: A[]; columns: Column<A>[] }) => {
   )
 }
 
-type User = ReturnType<typeof makeData>[number]
+interface User {
+  firstName: string
+  lastName: string
+  age: number
+  visits: number
+  status: string
+  progress: string
+}
 const App = () => {
-  const columns = React.useMemo(
-    (): Column<User>[] => [
-      {
-        Header: 'Name',
-        columns: [
-          { Header: 'First Name', accessor: 'firstName' },
-          { Header: 'Last Name', accessor: 'lastName' },
-        ],
-      },
-      {
-        Header: 'Info',
-        columns: [
-          { Header: 'Age', accessor: 'age' },
-          { Header: 'Visits', accessor: 'visits' },
-          { Header: 'Status', accessor: 'status' },
-          { Header: 'Profile Progress', accessor: 'progress' },
-        ],
-      },
-    ],
-    []
-  )
-  const data = React.useMemo(() => makeData(20), [])
+  const columns: Column<User>[] = [
+    {
+      Header: 'Name',
+      columns: [
+        { Header: 'First Name', accessor: 'firstName' },
+        { Header: 'Last Name', accessor: 'lastName' },
+      ],
+    },
+    {
+      Header: 'Info',
+      columns: [
+        { Header: 'Age', accessor: 'age' },
+        { Header: 'Visits', accessor: 'visits' },
+        { Header: 'Status', accessor: 'status' },
+        { Header: 'Profile Progress', accessor: 'progress' },
+      ],
+    },
+  ]
+  const data: User[] = [
+    {
+      firstName: 'Anthony',
+      lastName: 'Gabriele',
+      age: 27,
+      visits: 23,
+      status: 'waiting',
+      progress: 'humble'
+    },
+    {
+      firstName: 'Oleg',
+      lastName: 'Kiselyov',
+      age: 30,
+      visits: 5,
+      status: 'waiting',
+      progress: 'advanced'
+    }
+  ]
   return <Table columns={columns} data={data} />
 }
-
-export default App
 ```
 
-## TODO
-
-- better example
-- tests
-- different behavior for 3+ headers
+![table output](table-screenshot.png)
