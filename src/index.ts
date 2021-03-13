@@ -122,38 +122,34 @@ export const branchValueGrid = <A, B>(
  * 
  * @example
  * 
- * const tree: Tree<string, number> = {
- *   type: 'Branch',
- *   value: 'A',
- *   children: [
-*      {
-*        type: 'Branch',
-*        value: 'B1',
-*        children: [
-*          {
-*            type: 'Branch',
-*            value: 'C',
-*            children: [
-*              { type: 'Leaf', value: 1 },
-*              { type: 'Leaf', value: 2 }
-*            ]
-*          }
-*        ]
-*      },
-*      {
-*        type: 'Branch',
-*        value: 'B2',
-*        branches: [
-*          { type: 'Leaf', value: 3 },
-*          { type: 'Leaf', value: 4 }
-*        ]
-*      }
-*    ]
- * }
+ * const branches: Tree<number, string>[] = [
+ *   {
+ *     type: 'Branch',
+ *     value: 'A1',
+ *     children: [
+ *       {
+ *         type: 'Branch',
+ *         value: 'B',
+ *         children: [
+ *           { type: 'Leaf', value: 1 },
+ *           { type: 'Leaf', value: 2 }
+ *         ]
+ *       }
+ *     ]
+ *   },
+ *   {
+ *     type: 'Branch',
+ *     value: 'A2',
+ *     children: [
+ *       { type: 'Leaf', value: 3 },
+ *       { type: 'Leaf', value: 4 }
+ *     ]
+ *   }
+ * ]
  * 
  * const allLeaves: number[] = [1, 2, 3, 4]
  * 
- * assert.deepStrictEqual(leafValues(tree), allLeaves)
+ * assert.deepStrictEqual(branches.flatMap(leafValues), allLeaves)
  */
 export const leafValues = <A, B>(tree: Tree<A, B>): Array<A> => tree.type === 'Leaf'
   ? [tree.value]
