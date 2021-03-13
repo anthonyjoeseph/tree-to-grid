@@ -1,6 +1,6 @@
 {
   "name": "tree-to-grid",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Turns a tree structure into an evenly spaced grid. Denotative replacement for react-table",
   "main": "dist/index.js",
   "repository": "https://github.com/anthonyjoeseph/tree-to-grid",
