@@ -40,4 +40,11 @@ describe('Grid functions', () => {
     ]
     assert.deepStrictEqual(branchValueGrid(branches), grid);
   });
+
+  it('leaves return empty array', () => {
+    const branches: Tree<number, string>[] = [
+      { type: 'Leaf', value: 1}, { type: 'Leaf', value: 2 }
+    ]
+    assert.deepStrictEqual(branchValueGrid(branches), []);
+  });
 });

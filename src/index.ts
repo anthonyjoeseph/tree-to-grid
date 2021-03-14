@@ -1,9 +1,10 @@
 import { sum } from 'fp-ts-std/Array';
 import * as A from 'fp-ts/Array';
 import * as NEA from 'fp-ts/NonEmptyArray'
+import * as N from 'fp-ts/number'
 import * as Eq from 'fp-ts/Eq'
 import * as Ord from 'fp-ts/Ord'
-import { flow, pipe } from 'fp-ts/function';
+import { flow, identity, pipe } from 'fp-ts/function';
 import * as O from 'fp-ts/Option';
 
 export interface Branch<A, B> {
@@ -30,8 +31,20 @@ const level = <A, B>(tree: Tree<A, B>): number => tree.type === 'Branch'
   : 1
 
 const sameLevelEq = <A, B>() => pipe(
-  Eq.eqNumber,
+  N.Eq,
   Eq.contramap<number, Tree<A, B>>(level)
+)
+const groupChildBranches = <A, B, C>(
+  maxLevel: number,
+  onNextLevel: (parent: Branch<A, B>) => (childrenGroupedByLevel: Array<NEA.NonEmptyArray<Tree<A, B>>>) => C[],
+  onLowerLevel: (lowerLevel: Tree<A, B>) => C,
+) => A.chain((b: Tree<A, B>) => b.type === 'Branch' && level(b) === maxLevel
+  ? pipe(
+    b.children,
+    NEA.group(sameLevelEq<A, B>()),
+    onNextLevel(b),
+  )
+  : [onLowerLevel(b)]
 )
 
 /**
@@ -80,41 +93,35 @@ export const branchValueGrid = <A, B>(
 ): Array<Array<{ numLeaves: number, value: B | undefined }>> => {
   const maxLevel = pipe(branches, A.map(level), max)
   const nextLevel = maxLevel - 1
-  const rowOutput: { numLeaves: number, value: B | undefined }[] = pipe(
-    branches,
-    A.chain(b => b.type === 'Leaf' || level(b) < maxLevel
-      ? [{ numLeaves: numLeaves(b), value: undefined }]
-      : pipe(
-        b.children,
-        NEA.group(sameLevelEq<A, B>()),
-        A.map(d => ({
-          numLeaves: pipe(d, NEA.map(numLeaves), sum),
-          value: level(NEA.head(d)) === nextLevel ? b.value : undefined
-        })),
-      )
-    )
-  )
-  const lowerTrees: Tree<A, B>[] = pipe(
-    branches,
-    A.chain(b => b.type === 'Leaf' || level(b) < maxLevel 
-      ? [b]
-      : pipe(
-        b.children,
-        NEA.group(sameLevelEq<A, B>()),
-        A.chain(c => level(NEA.head(c)) === nextLevel
-          ? c
+  return pipe(branches, A.every(b => b.type === 'Leaf'))
+    ? []
+    : pipe(
+      branches,
+      groupChildBranches(
+        maxLevel,
+        parent => A.chain((levelGroup): Array<Tree<A, B>> => level(NEA.head(levelGroup)) === nextLevel
+          ? levelGroup
           : [{
             type: 'Branch',
-            value: b.value,
-            children: c
+            value: parent.value,
+            children: levelGroup
           }]
+        ),
+        identity,
+      ),
+      branchValueGrid,
+      A.prepend(pipe(
+        branches,
+        groupChildBranches(
+          maxLevel,
+          parent => A.map(levelGroup => ({
+            numLeaves: pipe(levelGroup, A.map(numLeaves), sum),
+            value: level(NEA.head(levelGroup)) === nextLevel ? parent.value : undefined
+          })),
+          b => ({ numLeaves: numLeaves(b), value: undefined }),
         )
-      )
+      ))
     )
-  )
-  return lowerTrees.some(t => t.type === 'Branch')
-    ? [rowOutput, ...branchValueGrid(lowerTrees)]
-    : [rowOutput]
 }
 
 /**

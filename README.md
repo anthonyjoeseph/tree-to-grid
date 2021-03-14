@@ -12,7 +12,7 @@ Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlins
 
 ```tsx
 import React from 'react';
-import { Tree, branchValueGrid, leafValues } from './lib/TreeUtil';
+import { Tree, branchValueGrid, leafValues } from 'tree-to-grid';
 
 type ValueOf<A> = A[keyof A]
 
