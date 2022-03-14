@@ -12,8 +12,8 @@ Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlins
 
 ```tsx
 import React from 'react';
-import { groupHeaders, accessors } from '../../../tree-to-grid/src/index';
-import { Column } from '../../../tree-to-grid/src/column'
+import { groupHeaders, accessors } from 'tree-to-grid';
+import { Column } from 'tree-to-grid/dist/column'
 //         ^----- simple version of `Column`
 //    you can extend this interface if you'd like
 //    or you can use react-table's `Column` type
