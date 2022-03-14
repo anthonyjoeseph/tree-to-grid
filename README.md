@@ -12,55 +12,33 @@ Example is adapted from [react-table](https://codesandbox.io/s/github/tannerlins
 
 ```tsx
 import React from 'react';
-import { Tree, branchValueGrid, leafValues } from 'tree-to-grid';
-
-type ValueOf<A> = A[keyof A]
-
-interface Group<A> {
-  Header: string
-  columns: Column<A>[]
-}
-type Accessor<A> = ValueOf<{
-  [K in keyof A]: {
-    Header: string
-    accessor: K
-    Cell?: (val: A[K]) => React.ReactNode
-  }
-}>
-type Column<A> = Group<A> | Accessor<A>
-
-const toTree = <A,>(col: Column<A>): Tree<Accessor<A>, string> => 'columns' in col
-  ? {
-    type: 'Branch',
-    value: col.Header,
-    children: col.columns.map(toTree)
-  }
-  : {
-    type: 'Leaf',
-    value: col
-  }
+import { groupHeaders, accessors } from '../../../tree-to-grid/src/index';
+import { Column } from '../../../tree-to-grid/src/column'
+//         ^----- simple version of `Column`
+//    you can extend this interface if you'd like
+//    or you can use react-table's `Column` type
 
 const Table = <A,>({ data, columns }: { data: A[]; columns: Column<A>[] }) => {
-  const accessors = columns.map(toTree).flatMap(leafValues)
+  const allAccessors = columns.flatMap(accessors)
   return (
     <table>
       <thead>
-        {branchValueGrid(columns.map(toTree)).map(headerGroup => (
+        {groupHeaders(columns).map(headerGroup => (
           <tr>
-            {headerGroup.map(({ value, numLeaves }) => (
-              <th colSpan={numLeaves}>{value}</th>
+            {headerGroup.map(({ Header, numLeaves }) => (
+              <th colSpan={numLeaves}>{Header}</th>
             ))}
           </tr>
         ))}
         <tr>
-          {accessors.map(({Header}) => <th>{Header}</th>)}
+          {allAccessors.map((a) => <th>{a.Header}</th>)}
         </tr>
       </thead>
       <tbody>
         {data.map(rowData => (
           <tr>
-            {accessors.map(({Cell = (a) => a, accessor}) => (
-              <td>{Cell(rowData[accessor])}</td>
+            {allAccessors.map(({ accessor }) => (
+              <td>{rowData[accessor]}</td>
             ))}
           </tr>
         ))}

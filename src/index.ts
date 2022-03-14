@@ -6,158 +6,157 @@ import * as Eq from 'fp-ts/Eq'
 import * as Ord from 'fp-ts/Ord'
 import { flow, identity, pipe } from 'fp-ts/function';
 import * as O from 'fp-ts/Option';
+import { Column, Accessor, isGroup, isAccessor } from './column';
+import { ReactNode } from 'react';
 
-export interface Branch<A, B> {
-  type: 'Branch'
-  value: B
-  children: Tree<A, B>[]
-}
 
-export interface Leaf<A> {
-  type: 'Leaf'
-  value: A
-}
-
-export type Tree<A, B> = Branch<A, B> | Leaf<A>
-
-const numLeaves = <A, B>(tree: Tree<A, B>): number => tree.type === 'Branch'
-  ? pipe(tree.children, A.map(numLeaves), sum)
+const numAccessors = <C extends Column<any>>(column: C): number => isGroup(column)
+  ? pipe(column.columns, A.map(numAccessors), sum)
   : 1
 
 const max: (ns: number[]) => number = flow(NEA.fromArray, O.fold(() => 0, NEA.max(Ord.ordNumber)))
 
-const level = <A, B>(tree: Tree<A, B>): number => tree.type === 'Branch'
-  ? pipe(tree.children, A.map(level), max) + 1
+const level = <C extends Column<any>>(column: C): number => isGroup(column)
+  ? pipe(column.columns, A.map(level), max) + 1
   : 1
 
-const sameLevelEq = <A, B>() => pipe(
+const sameLevelEq = <C extends Column<any>>() => pipe(
   N.Eq,
-  Eq.contramap<number, Tree<A, B>>(level)
+  Eq.contramap<number, C>(level)
 )
-const groupChildBranches = <A, B, C>(
+
+const groupChildGroups = <A extends Column<any>, C>(
   maxLevel: number,
-  onNextLevel: (parent: Branch<A, B>) => (childrenGroupedByLevel: Array<NEA.NonEmptyArray<Tree<A, B>>>) => C[],
-  onLowerLevel: (lowerLevel: Tree<A, B>) => C,
-) => A.chain((b: Tree<A, B>) => b.type === 'Branch' && level(b) === maxLevel
+  onNextLevel: (parent: A) => (childrenGroupedByLevel: Array<NEA.NonEmptyArray<A>>) => C[],
+  onLowerLevel: (lowerLevel: A) => C,
+) => A.chain((b: A) => isGroup(b) && level(b) === maxLevel
   ? pipe(
-    b.children,
-    NEA.group(sameLevelEq<A, B>()),
+    b.columns,
+    NEA.group(sameLevelEq<Column<any>>()),
     onNextLevel(b),
   )
   : [onLowerLevel(b)]
 )
 
 /**
- * Turns an array of Trees into a grid (2D array) of its branches's values, organized by level & excluding leaves.
+ * Turns an array of Columns into a grid (2D array) of its Group nodes, organized by level & excluding Accessors.
  * 
  * 
  * The total 'numLeaves' of each level should be equivalent.
  * Elements w/ empty values are used to achieve this.
  * 
  * @example
- * 
- * const branches: Tree<number, string>[] = [
+ * interface TreeType {
+ *   a: string;
+ *   b: string;
+ *   c: string;
+ *   d: string;
+ * }
+ * const columns: Column<TreeType>[] = [
  *   {
- *     type: 'Branch',
- *     value: 'A1',
- *     children: [
+ *     Header: 'A1',
+ *     columns: [
  *       {
- *         type: 'Branch',
- *         value: 'B',
- *         children: [
- *           { type: 'Leaf', value: 1 },
- *           { type: 'Leaf', value: 2 }
+ *         Header: 'B',
+ *         columns: [
+ *           { Header: 'A header', accessor: 'd' },
+ *           { Header: 'B header', accessor: 'b' }
  *         ]
  *       }
  *     ]
  *   },
  *   {
- *     type: 'Branch',
- *     value: 'A2',
- *     children: [
- *       { type: 'Leaf', value: 3 },
- *       { type: 'Leaf', value: 4 }
+ *     Header: 'A2',
+ *     columns: [
+ *       { Header: 'C header', accessor: 'c' },
+ *       { Header: 'D header', accessor: 'd' }
  *     ]
  *   }
  * ]
  * 
- * const grid: { numLeaves: number; value: string | undefined }[][] = [
- *   [ { numLeaves: 2, value: 'A1' },  { numLeaves: 2, value: undefined } ],
- *   [ { numLeaves: 2, value: 'B' }, { numLeaves: 2, value: 'A2' } ],
+ * const grid: { numLeaves: number; Header: string | undefined }[][] = [
+ *   [ { numLeaves: 2, Header: 'A1' },  { numLeaves: 2, Header: undefined } ],
+ *   [ { numLeaves: 2, Header: 'B' }, { numLeaves: 2, Header: 'A2' } ],
  * ]
  * 
  * assert.deepStrictEqual(branchValueGrid(branches), grid)
  */
-export const branchValueGrid = <A, B>(
-  branches: Array<Tree<A, B>>
-): Array<Array<{ numLeaves: number, value: B | undefined }>> => {
+export const groupHeaders = <A>(
+  branches: Array<Column<A>>
+): Array<Array<{ numLeaves: number, Header: ReactNode }>> => {
   const maxLevel = pipe(branches, A.map(level), max)
   const nextLevel = maxLevel - 1
-  return pipe(branches, A.every(b => b.type === 'Leaf'))
+  return pipe(branches, A.every(isAccessor))
     ? []
     : pipe(
       branches,
-      groupChildBranches(
+      groupChildGroups(
         maxLevel,
-        parent => A.chain((levelGroup): Array<Tree<A, B>> => level(NEA.head(levelGroup)) === nextLevel
+        parent => A.chain((levelGroup): Array<Column<A>> => level(NEA.head(levelGroup)) === nextLevel
           ? levelGroup
           : [{
-            type: 'Branch',
-            value: parent.value,
-            children: levelGroup
+            ...parent,
+            columns: levelGroup
           }]
         ),
         identity,
       ),
-      branchValueGrid,
+      groupHeaders,
       A.prepend(pipe(
         branches,
-        groupChildBranches(
+        groupChildGroups(
           maxLevel,
           parent => A.map(levelGroup => ({
-            numLeaves: pipe(levelGroup, A.map(numLeaves), sum),
-            value: level(NEA.head(levelGroup)) === nextLevel ? parent.value : undefined
+            numLeaves: pipe(levelGroup, A.map(numAccessors), sum),
+            Header: level(NEA.head(levelGroup)) === nextLevel && isGroup(parent) ? parent.Header : undefined
           })),
-          b => ({ numLeaves: numLeaves(b), value: undefined }),
+          b => ({ numLeaves: numAccessors(b), Header: undefined }),
         )
       ))
     )
 }
 
 /**
- * Turns a Tree into an Array of the values of its leaves
+ * Turns an array of Columns into an array of its Accessors
  * 
  * @example
  * 
- * const branches: Tree<number, string>[] = [
+ * const columns: Column<TreeType>[] = [
  *   {
- *     type: 'Branch',
- *     value: 'A1',
- *     children: [
+ *     Header: 'A1',
+ *     columns: [
  *       {
- *         type: 'Branch',
- *         value: 'B',
- *         children: [
- *           { type: 'Leaf', value: 1 },
- *           { type: 'Leaf', value: 2 }
+ *         Header: 'B',
+ *         columns: [
+ *           { Header: 'A header', accessor: 'd' },
+ *           { Header: 'B header', accessor: 'b' }
  *         ]
  *       }
  *     ]
  *   },
  *   {
- *     type: 'Branch',
- *     value: 'A2',
- *     children: [
- *       { type: 'Leaf', value: 3 },
- *       { type: 'Leaf', value: 4 }
+ *     Header: 'A2',
+ *     columns: [
+ *       { Header: 'C header', accessor: 'c' },
+ *       { Header: 'D header', accessor: 'd' }
  *     ]
  *   }
  * ]
  * 
- * const allLeaves: number[] = [1, 2, 3, 4]
+ * const accessors: Accessor<TableType>[] = [
+ *   { Header: 'A header', accessor: 'a' }, 
+ *   { Header: 'B header', accessor: 'b' },
+ *   { Header: 'C header', accessor: 'c' },
+ *   { Header: 'D header', accessor: 'd' }
+ * ]
  * 
- * assert.deepStrictEqual(branches.flatMap(leafValues), allLeaves)
+ * assert.deepStrictEqual(columns.flatMap(columns), accessors)
  */
-export const leafValues = <A, B>(tree: Tree<A, B>): Array<A> => tree.type === 'Leaf'
-  ? [tree.value]
-  : pipe(tree.children, A.chain(leafValues))
+export const accessors = <A>(column: Column<A>): Array<Accessor<A>> => isAccessor(column)
+  ? [{ 
+      ...column,
+      Header: 'Header' in column ? column.Header : ''
+    }]
+  : isGroup(column)
+    ? pipe(column.columns, A.chain(accessors)) as Accessor<A>[]
+    : []

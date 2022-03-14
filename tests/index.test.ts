@@ -1,50 +1,61 @@
 import * as assert from 'assert';
-import { Tree, leafValues, branchValueGrid } from '../src/index';
+import { accessors, groupHeaders } from '../src/index';
+import { Column, Accessor } from '../src/column'
+import { ReactNode } from 'react';
+
+interface TableType { 
+  a: number
+  b: string
+  c: string
+  d: string
+}
 
 describe('Grid functions', () => {
-
-  const branches: Tree<number, string>[] = [
+  const columns: Column<TableType>[] = [
     {
-      type: 'Branch',
-      value: 'A1',
-      children: [
+      Header: 'A1',
+      columns: [
         {
-          type: 'Branch',
-          value: 'B',
-          children: [
-            { type: 'Leaf', value: 1 },
-            { type: 'Leaf', value: 2 }
+          Header: 'B',
+          columns: [
+            { Header: 'A header', accessor: 'a' },
+            { Header: 'B header', accessor: 'b' }
           ]
         }
       ]
     },
     {
-      type: 'Branch',
-      value: 'A2',
-      children: [
-        { type: 'Leaf', value: 3 },
-        { type: 'Leaf', value: 4 }
+      Header: 'A2',
+      columns: [
+        { Header: 'C header', accessor: 'c' },
+        { Header: 'D header', accessor: 'd' }
       ]
     }
   ]
 
-  it('gets leaf values', () => {
-    const allLeaves: number[] = [1, 2, 3, 4]
-    assert.deepStrictEqual(branches.flatMap(leafValues), allLeaves);
+  it('gets accessors', () => {
+    const allAccessors: Accessor<TableType>[] = [
+      { Header: 'A header', accessor: 'a' }, 
+      { Header: 'B header', accessor: 'b' }, 
+      { Header: 'C header', accessor: 'c' }, 
+      { Header: 'D header', accessor: 'd' }
+    ]
+    const a = columns.flatMap(accessors)
+    assert.deepStrictEqual(columns.flatMap(accessors), allAccessors);
   });
 
-  it('gets branch value grid', () => {
-    const grid: { numLeaves: number; value: string | undefined }[][] = [
-      [ { numLeaves: 2, value: 'A1' },  { numLeaves: 2, value: undefined } ],
-      [ { numLeaves: 2, value: 'B' }, { numLeaves: 2, value: 'A2' } ],
+  it('gets group header grid', () => {
+    const grid: { numLeaves: number; Header: ReactNode | undefined }[][] = [
+      [ { numLeaves: 2, Header: 'A1' },  { numLeaves: 2, Header: undefined } ],
+      [ { numLeaves: 2, Header: 'B' }, { numLeaves: 2, Header: 'A2' } ],
     ]
-    assert.deepStrictEqual(branchValueGrid(branches), grid);
+    assert.deepStrictEqual(groupHeaders(columns), grid);
   });
 
-  it('leaves return empty array', () => {
-    const branches: Tree<number, string>[] = [
-      { type: 'Leaf', value: 1}, { type: 'Leaf', value: 2 }
+  it('accessors return empty array', () => {
+    const accessors: Accessor<TableType>[] = [
+      { Header: 'A header', accessor: 'a' }, { Header: 'B header', accessor: 'b' }
     ]
-    assert.deepStrictEqual(branchValueGrid(branches), []);
+    assert.deepStrictEqual(groupHeaders(accessors), []);
   });
 });
